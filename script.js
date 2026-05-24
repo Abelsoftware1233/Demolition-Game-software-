@@ -21,12 +21,13 @@ let highScores = JSON.parse(localStorage.getItem('abel123_scores') || '[]');
 let completedLevels = JSON.parse(localStorage.getItem('abel123_completed') || '[]');
 
 // ── BOMB DEFINITIONS ──────────────────────────
+// bombLimit toegevoegd per bom-type op basis van de x3, x6, x2 in je screenshot
 const BOMBS = {
-  c4:     { name:'C4',      radius:80,  power:5,  color:'#ff2222', glowColor:'rgba(255,34,34,0.6)',    delay:0,   chain:false, heat:false },
-  tnt:    { name:'TNT',     radius:110, power:3,  color:'#ff8800', glowColor:'rgba(255,136,0,0.5)',    delay:0,   chain:false, heat:false },
-  thermo: { name:'THERMO',  radius:70,  power:6,  color:'#00ccff', glowColor:'rgba(0,200,255,0.6)',    delay:0.3, chain:false, heat:true  },
-  emp:    { name:'EMP',     radius:150, power:2,  color:'#aa00ff', glowColor:'rgba(170,0,255,0.5)',    delay:0,   chain:true,  heat:false },
-  mega:   { name:'MEGA',    radius:200, power:9,  color:'#ffee00', glowColor:'rgba(255,238,0,0.7)',    delay:0.5, chain:false, heat:true  },
+  c4:     { name:'C4',      radius:80,  power:5,  color:'#ff2222', glowColor:'rgba(255,34,34,0.6)',    delay:0,   chain:false, heat:false, bombLimit:3 },
+  tnt:    { name:'TNT',     radius:110, power:3,  color:'#ff8800', glowColor:'rgba(255,136,0,0.5)',    delay:0,   chain:false, heat:false, bombLimit:6 },
+  thermo: { name:'THERMO',  radius:70,  power:6,  color:'#00ccff', glowColor:'rgba(0,200,255,0.6)',    delay:0.3, chain:false, heat:true,  bombLimit:4 },
+  emp:    { name:'EMP',     radius:150, power:2,  color:'#aa00ff', glowColor:'rgba(170,0,255,0.5)',    delay:0,   chain:true,  heat:false, bombLimit:4 },
+  mega:   { name:'MEGA',    radius:200, power:9,  color:'#ffee00', glowColor:'rgba(255,238,0,0.7)',    delay:0.5, chain:false, heat:true,  bombLimit:2 },
 };
 
 // ── LEVEL DEFINITIONS ────────────────────────
@@ -67,7 +68,7 @@ const LEVELS = [
     layout: 'silos'
   },
   {
-    id:8, name:'MEGASTRUCTUUR',   desc:'Het ultieme doelwit',            target:50, difficulty:5,
+    id:8, name:'MEGASTRUCTUUR',   desc:'Het ultieme doelwet',            target:50, difficulty:5,
     color:'#ff2222', bombLimit:20,
     layout: 'mega'
   },
@@ -85,7 +86,7 @@ const MATERIALS = {
 
 // ── LEVEL BUILDERS ───────────────────────────
 function buildLevel(layout, W, H) {
-  const ground = H - 60;
+  const ground = H - 120; // Aangepast naar 120 zodat gebouwen niet achter de houten balk vallen
   const blocks = [];
   const bw = 28, bh = 20;
 
@@ -313,7 +314,6 @@ function startLevel(lvl) {
   resizeCanvas();
   blocks = buildLevel(lvl.layout, canvas.width, canvas.height);
 
-  // Set camera to fit building
   camX = 0; camY = 0; camScale = 1;
 
   updateHUD();
@@ -338,7 +338,7 @@ function stopGame() {
   canvas = document.getElementById('game-canvas');
   if (canvas) {
     canvas.removeEventListener('click', onCanvasClick);
-    canvas.removeEventListener('touchend', onCanvasTouchEnd);
+    canvas.removeEventListener('removeEventListener', onCanvasTouchEnd);
   }
 }
 
@@ -346,7 +346,7 @@ function resizeCanvas() {
   if (!canvas) return;
   const parent = canvas.parentElement;
   canvas.width  = parent.clientWidth  || window.innerWidth;
-  canvas.height = parent.clientHeight || (window.innerHeight - 200);
+  canvas.height = parent.clientHeight || window.innerHeight;
 }
 
 // ── INPUT ────────────────────────────────────
@@ -364,17 +364,21 @@ function onCanvasTouchEnd(e) {
 }
 
 function handlePlace(px, py) {
-  // Find block under tap
   const hit = getBlockAt(px, py);
   if (!hit) return;
   if (hit.destroyed) return;
 
-  // Check duplicate (remove if exists)
   const existing = placedBombs.findIndex(b=>b.blockId===hit.id);
   if (existing>=0) {
     placedBombs.splice(existing,1);
     updateDetonateBtn();
     return;
+  }
+
+  // Controleer of de limiet van het geselecteerde bomtype is bereikt
+  const currentTypeCount = placedBombs.filter(b => b.type === selectedBomb).length;
+  if (BOMBS[selectedBomb].bombLimit && currentTypeCount >= BOMBS[selectedBomb].bombLimit) {
+    return; // Stop als er geen ammunitie meer is
   }
 
   placedBombs.push({
@@ -386,8 +390,6 @@ function handlePlace(px, py) {
     exploded: false,
   });
   updateDetonateBtn();
-
-  // Tap feedback
   spawnClickParticles(px, py);
 }
 
@@ -402,7 +404,9 @@ function getBlockAt(px, py) {
 // ── TOOLBAR ──────────────────────────────────
 function selectBomb(type) {
   selectedBomb = type;
-  document.querySelectorAll('.bomb-opt').forEach(b=>{
+  
+  // Update de actieve stijl op zowel de oude als de nieuwe houten knoppen
+  document.querySelectorAll('.bomb-opt, .bomb-box').forEach(b=>{
     b.classList.toggle('active', b.dataset.type===type);
   });
 }
@@ -412,13 +416,11 @@ function detonate() {
   if (!placedBombs.length || detonating) return;
   detonating = true;
 
-  // Flash overlay
   const flash = document.createElement('div');
   flash.className = 'explosion-flash';
   document.body.appendChild(flash);
   setTimeout(()=>flash.remove(), 600);
 
-  // Trigger bombs with delays
   let maxDelay = 0;
   placedBombs.forEach((bomb, i) => {
     const def = BOMBS[bomb.type];
@@ -443,13 +445,9 @@ function triggerExplosion(bomb) {
   const def = BOMBS[bomb.type];
   const bx = bomb.x, by = bomb.y;
 
-  // Screen shake
   screenShake(def.power * 3);
-
-  // Particles
   spawnExplosion(bx, by, def);
 
-  // Damage blocks
   for (let b of blocks) {
     if (b.destroyed) continue;
     const cx = b.x + b.w/2, cy = b.y + b.h/2;
@@ -463,7 +461,6 @@ function triggerExplosion(bomb) {
         spawnDebris(b);
         gameScore += Math.floor(MATERIALS[b.mat].mass * 100);
       } else {
-        // Push block
         const angle = Math.atan2(cy-by, cx-bx);
         const force = (def.power * (1-dist/def.radius)) * 8;
         b.vx += Math.cos(angle) * force;
@@ -474,7 +471,6 @@ function triggerExplosion(bomb) {
     }
   }
 
-  // EMP chain reaction
   if (def.chain) {
     placedBombs.forEach(other => {
       if (other !== bomb && !other.exploded) {
@@ -515,7 +511,7 @@ function spawnDebris(block) {
 }
 
 function updateDebris() {
-  const ground = canvas.height - 60;
+  const ground = canvas.height - 120;
   for (let d of debris) {
     d.vy += 0.4;
     d.x += d.vx;
@@ -530,7 +526,7 @@ function updateDebris() {
 }
 
 function updateBlocks() {
-  const ground = canvas.height - 60;
+  const ground = canvas.height - 120;
   for (let b of blocks) {
     if (!b.falling || b.destroyed) continue;
     b.vy += 0.5;
@@ -568,7 +564,6 @@ function spawnExplosion(x, y, def) {
       glow: def.glowColor,
     });
   }
-  // Smoke
   for (let i=0;i<20;i++) {
     particles.push({
       x: x+(Math.random()-0.5)*20,
@@ -627,11 +622,27 @@ function updateHUD() {
   document.getElementById('destruction-fill').style.width = Math.min(destructionPct,100)+'%';
   document.getElementById('destruction-pct').textContent = destructionPct+'%';
 }
+
 function updateDetonateBtn() {
-  const btn = document.getElementById('detonate-btn');
+  // Update de oude rechthoekige én de nieuwe ronde rode detonatieknop
+  const btnOld = document.getElementById('detonate-btn');
+  const btnRound = document.getElementById('detonate-btn-round');
   const count = placedBombs.length;
-  btn.disabled = count === 0;
-  document.getElementById('bomb-count-placed').textContent = count + ' EXPLOSIEVEN';
+  
+  if (btnOld) btnOld.disabled = count === 0;
+  if (btnRound) btnRound.disabled = count === 0;
+  
+  const label = document.getElementById('bomb-count-placed');
+  if (label) label.textContent = count + ' EXPLOSIEVEN';
+
+  // Update live de resterende munitietags (x3, x6, x2) op de houten balk
+  Object.keys(BOMBS).forEach(key => {
+    const el = document.getElementById(`count-${key}`);
+    if (el) {
+      const placedCount = placedBombs.filter(b => b.type === key).length;
+      el.textContent = `x${BOMBS[key].bombLimit - placedCount}`;
+    }
+  });
 }
 
 // ── WIN / LOSE ───────────────────────────────
@@ -688,7 +699,6 @@ function render() {
   if (!canvas || !ctx) return;
   ctx.clearRect(0,0,canvas.width,canvas.height);
 
-  // Shake
   if (shakeAmt > 0.1) {
     shakeX = (Math.random()-0.5)*shakeAmt;
     shakeY = (Math.random()-0.5)*shakeAmt;
@@ -697,7 +707,6 @@ function render() {
   ctx.save();
   ctx.translate(shakeX, shakeY);
 
-  // Sky gradient
   const sky = ctx.createLinearGradient(0,0,0,canvas.height);
   sky.addColorStop(0, '#020408');
   sky.addColorStop(0.6, '#050a14');
@@ -705,13 +714,20 @@ function render() {
   ctx.fillStyle = sky;
   ctx.fillRect(0,0,canvas.width,canvas.height);
 
-  // Grid
   drawGrid();
-
-  // Ground
   drawGround();
 
-  // Smoke (back)
+  // Teken de stippellijn (hoogtelimiet) uit het screenshot
+  ctx.save();
+  ctx.strokeStyle = 'rgba(255, 255, 255, 0.4)';
+  ctx.lineWidth = 2;
+  ctx.setLineDash([6, 6]);
+  ctx.beginPath();
+  ctx.moveTo(0, canvas.height * 0.55);
+  ctx.lineTo(canvas.width, canvas.height * 0.55);
+  ctx.stroke();
+  ctx.restore();
+
   for (let p of particles) {
     if (p.type!=='smoke') continue;
     ctx.globalAlpha = p.alpha;
@@ -723,7 +739,6 @@ function render() {
   }
   ctx.globalAlpha = 1;
 
-  // Debris
   for (let d of debris) {
     ctx.save();
     ctx.globalAlpha = d.alpha;
@@ -734,7 +749,6 @@ function render() {
     ctx.restore();
   }
 
-  // Blocks
   for (let b of blocks) {
     if (b.destroyed) continue;
     ctx.save();
@@ -752,7 +766,6 @@ function render() {
     ctx.strokeStyle = mat.stroke;
     ctx.lineWidth = 1;
     ctx.strokeRect(0,0,b.w,b.h);
-    // Cracks
     if (dmgRatio > 0.3) {
       ctx.strokeStyle = 'rgba(0,0,0,0.6)';
       ctx.lineWidth = 0.5;
@@ -761,7 +774,6 @@ function render() {
       ctx.lineTo(Math.random()*b.w, b.h);
       ctx.stroke();
     }
-    // Glow for structural
     if (b.structural) {
       ctx.strokeStyle = 'rgba(0,200,255,0.15)';
       ctx.lineWidth = 1;
@@ -770,13 +782,11 @@ function render() {
     ctx.restore();
   }
 
-  // Placed bombs
   for (let bomb of placedBombs) {
     if (bomb.exploded) continue;
     const def = BOMBS[bomb.type];
     const t = Date.now()/1000;
     const pulse = 0.7 + 0.3*Math.sin(t*6);
-    // Blast radius preview (faint)
     ctx.beginPath();
     ctx.arc(bomb.x, bomb.y, def.radius, 0, Math.PI*2);
     ctx.fillStyle = def.glowColor.replace('0.6','0.05').replace('0.5','0.05').replace('0.7','0.05');
@@ -786,7 +796,6 @@ function render() {
     ctx.setLineDash([4,4]);
     ctx.stroke();
     ctx.setLineDash([]);
-    // Bomb icon
     ctx.save();
     ctx.translate(bomb.x, bomb.y);
     ctx.scale(pulse, pulse);
@@ -799,27 +808,23 @@ function render() {
     ctx.strokeStyle = '#fff';
     ctx.lineWidth = 1.5;
     ctx.stroke();
-    // Fuse
     ctx.beginPath();
     ctx.moveTo(0,-10);
     ctx.lineTo(5,-18);
     ctx.strokeStyle = '#ffcc00';
     ctx.lineWidth = 2;
     ctx.stroke();
-    // Spark on fuse
     ctx.beginPath();
     ctx.arc(5,-18,2,0,Math.PI*2);
     ctx.fillStyle = '#ffffff';
     ctx.fill();
     ctx.restore();
-    // Label
     ctx.font = 'bold 8px Orbitron, monospace';
     ctx.fillStyle = def.color;
     ctx.textAlign = 'center';
     ctx.fillText(def.name, bomb.x, bomb.y+22);
   }
 
-  // Particles (sparks/embers)
   for (let p of particles) {
     if (p.type==='smoke') continue;
     ctx.save();
@@ -836,7 +841,7 @@ function render() {
   }
   ctx.globalAlpha = 1;
 
-  ctx.restore(); // end shake
+  ctx.restore();
 }
 
 function drawGrid() {
@@ -852,7 +857,7 @@ function drawGrid() {
 }
 
 function drawGround() {
-  const gy = canvas.height - 60;
+  const gy = canvas.height - 120; // Grondvloer gelijkgetrokken met de houten toolbar hoogte
   const grad = ctx.createLinearGradient(0,gy,0,canvas.height);
   grad.addColorStop(0,'#1a1a2e');
   grad.addColorStop(0.1,'#0f0f1a');
@@ -863,7 +868,6 @@ function drawGround() {
   ctx.lineWidth = 1;
   ctx.beginPath();
   ctx.moveTo(0,gy); ctx.lineTo(canvas.width,gy); ctx.stroke();
-  // Ground glow
   ctx.strokeStyle = 'rgba(0,245,255,0.06)';
   ctx.lineWidth = 3;
   ctx.beginPath();
