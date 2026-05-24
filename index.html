@@ -9,11 +9,9 @@
 </head>
 <body>
 
-  <!-- SCANLINE OVERLAY -->
   <div class="scanlines"></div>
   <div class="vignette"></div>
 
-  <!-- MAIN MENU -->
   <div id="screen-menu" class="screen active">
     <div class="menu-bg">
       <canvas id="bg-canvas"></canvas>
@@ -39,7 +37,6 @@
     </div>
   </div>
 
-  <!-- LEVEL SELECT -->
   <div id="screen-levels" class="screen">
     <div class="screen-header">
       <button class="back-btn" onclick="showMenu()">← TERUG</button>
@@ -48,7 +45,6 @@
     <div class="levels-grid" id="levels-grid"></div>
   </div>
 
-  <!-- HOW TO PLAY -->
   <div id="screen-howto" class="screen">
     <div class="screen-header">
       <button class="back-btn" onclick="showMenu()">← TERUG</button>
@@ -78,7 +74,6 @@
     </div>
   </div>
 
-  <!-- HIGH SCORES -->
   <div id="screen-scores" class="screen">
     <div class="screen-header">
       <button class="back-btn" onclick="showMenu()">← TERUG</button>
@@ -87,7 +82,6 @@
     <div id="scores-list" class="scores-list"></div>
   </div>
 
-  <!-- GAME SCREEN -->
   <div id="screen-game" class="screen">
     <div id="game-hud">
       <div class="hud-left">
@@ -110,55 +104,48 @@
       </div>
     </div>
 
-    <!-- CANVAS -->
     <canvas id="game-canvas"></canvas>
 
-    <!-- BOMB TOOLBAR -->
-    <div id="bomb-toolbar">
-      <div class="toolbar-label">SELECTEER BOM</div>
-      <div class="bomb-options" id="bomb-options">
-        <button class="bomb-opt active" data-type="c4" onclick="selectBomb('c4')">
-          <div class="bomb-sprite c4-sprite"></div>
-          <span>C4</span>
-          <div class="bomb-power">●●●○○</div>
+    <div id="game-controls-layer">
+      
+      <div id="bomb-toolbar-wooden">
+        <button class="bomb-box active" data-type="c4" onclick="selectBomb('c4')">
+          <div class="bomb-icon-img">
+            <div class="fallback-sprite"></div>
+          </div>
+          <div class="bomb-count-tag" id="count-c4">x3</div>
         </button>
-        <button class="bomb-opt" data-type="tnt" onclick="selectBomb('tnt')">
-          <div class="bomb-sprite tnt-sprite"></div>
-          <span>TNT</span>
-          <div class="bomb-power">●●○○○</div>
+        
+        <button class="bomb-box" data-type="tnt" onclick="selectBomb('tnt')">
+          <div class="bomb-icon-img">
+            <div class="fallback-sprite bundle"></div>
+          </div>
+          <div class="bomb-count-tag" id="count-tnt">x6</div>
         </button>
-        <button class="bomb-opt" data-type="thermo" onclick="selectBomb('thermo')">
-          <div class="bomb-sprite thermo-sprite"></div>
-          <span>THERMO</span>
-          <div class="bomb-power">●●●●○</div>
-        </button>
-        <button class="bomb-opt" data-type="emp" onclick="selectBomb('emp')">
-          <div class="bomb-sprite emp-sprite"></div>
-          <span>EMP</span>
-          <div class="bomb-power">●●●○○</div>
-        </button>
-        <button class="bomb-opt" data-type="mega" onclick="selectBomb('mega')">
-          <div class="bomb-sprite mega-sprite"></div>
-          <span>MEGA</span>
-          <div class="bomb-power">●●●●●</div>
+        
+        <button class="bomb-box" data-type="mega" onclick="selectBomb('mega')">
+          <div class="bomb-icon-img">
+            <div class="fallback-sprite remote"></div>
+          </div>
+          <div class="bomb-count-tag" id="count-mega">x2</div>
         </button>
       </div>
+
+      <button id="detonate-btn-round" onclick="detonate()" disabled>
+        <div class="detonate-icon-explosion"></div>
+      </button>
+
     </div>
 
-    <!-- DETONATE BUTTON -->
-    <div id="detonate-wrap">
-      <button id="detonate-btn" onclick="detonate()" disabled>
-        <span class="det-inner">
-          <span class="det-icon">⚡</span>
-          DETONEER
-        </span>
-      </button>
+    <div style="display: none;">
+      <div id="bomb-options"></div>
+      <div id="bomb-toolbar"></div>
+      <button id="detonate-btn"></button>
       <div id="bomb-count-placed">0 EXPLOSIEVEN</div>
     </div>
 
   </div>
 
-  <!-- RESULT OVERLAY -->
   <div id="screen-result" class="screen">
     <div class="result-content" id="result-content"></div>
   </div>
