@@ -1,600 +1,426 @@
-/* ============================================
-   ABEL123 DEMOLITION — FUTURISTIC MOBILE CSS
-   ============================================ */
+/* ========================================================
+   ABEL123 DEMOLITION — FUTURISTIC GAMEPLAY ENGINE (2026)
+   ======================================================== */
 
-:root {
-  --neon-red: #ff2222;
-  --neon-orange: #ff6a00;
-  --neon-yellow: #ffe600;
-  --neon-cyan: #00f5ff;
-  --neon-blue: #0066ff;
-  --neon-purple: #aa00ff;
-  --dark-bg: #05060a;
-  --dark-panel: #0b0d14;
-  --dark-card: #10131e;
-  --dark-border: #1e2535;
-  --text-bright: #e8f4ff;
-  --text-dim: #5a6a88;
-  --grid-color: rgba(0,245,255,0.04);
-}
+class DemolitionGame {
+    constructor() {
+        this.canvas = document.getElementById('game-canvas');
+        this.ctx = this.canvas.getContext('2d');
+        
+        // Game State
+        this.isDetonated = false;
+        this.score = 0;
+        this.destructionPercentage = 0;
+        this.targetDestruction = 75; // Target om te winnen
+        
+        // Geselecteerde bom type en inventaris (gebaseerd op screenshot)
+        this.selectedBombType = 'dynamite';
+        this.inventory = {
+            dynamite: 3,
+            bundle: 6,
+            c4: 2
+        };
+        this.placedBombs = [];
 
-* { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+        // Fysica Wereld Objecten
+        this.blocks = [];
+        this.particles = [];
+        this.debris = [];
+        
+        // Omgevingsfactoren
+        this.gravity = 0.25;
+        this.groundY = 0;
 
-html, body {
-  width: 100%; height: 100%; overflow: hidden;
-  background: var(--dark-bg);
-  font-family: 'Rajdhani', sans-serif;
-  color: var(--text-bright);
-  touch-action: none;
-}
+        this.init();
+    }
 
-/* SCANLINES */
-.scanlines {
-  position: fixed; inset: 0; pointer-events: none; z-index: 9999;
-  background: repeating-linear-gradient(
-    0deg,
-    transparent, transparent 2px,
-    rgba(0,0,0,0.08) 2px, rgba(0,0,0,0.08) 4px
-  );
-}
-.vignette {
-  position: fixed; inset: 0; pointer-events: none; z-index: 9998;
-  background: radial-gradient(ellipse at center, transparent 50%, rgba(0,0,0,0.7) 100%);
-}
+    init() {
+        this.resizeCanvas();
+        window.addEventListener('resize', () => this.resizeCanvas());
+        this.setupEventListeners();
+        this.generateStructure();
+        this.updateHUD();
+        
+        // Start Game Loop
+        this.loop();
+    }
 
-/* SCREENS */
-.screen {
-  position: fixed; inset: 0;
-  display: none; flex-direction: column;
-  background: var(--dark-bg);
-  overflow: hidden;
-}
-.screen.active { display: flex; }
+    resizeCanvas() {
+        const rect = this.canvas.parentElement.getBoundingClientRect();
+        this.canvas.width = rect.width;
+        this.canvas.height = rect.height;
+        this.groundY = this.canvas.height - 40;
+    }
 
-/* ============ MENU ============ */
-#screen-menu { background: #000; }
+    setupEventListeners() {
+        // Klik/Tap op Canvas om bommen te plaatsen
+        this.canvas.addEventListener('click', (e) => this.handleCanvasClick(e));
 
-.menu-bg {
-  position: absolute; inset: 0;
-}
-#bg-canvas {
-  width: 100%; height: 100%;
-  display: block;
-}
+        // Schakelen tussen bommen via de UI-knoppen
+        document.querySelectorAll('.bomb-opt').forEach(opt => {
+            opt.addEventListener('click', (e) => {
+                const btn = e.currentTarget;
+                document.querySelectorAll('.bomb-opt').forEach(b => b.classList.remove('active'));
+                btn.classList.add('active');
+                this.selectedBombType = btn.dataset.type;
+            });
+        });
 
-.menu-content {
-  position: relative; z-index: 10;
-  display: flex; flex-direction: column;
-  align-items: center; justify-content: center;
-  height: 100%; padding: 20px;
-  gap: 32px;
-}
+        // Detoneer Knop
+        const detonateBtn = document.getElementById('detonate-btn');
+        if (detonateBtn) {
+            detonateBtn.addEventListener('click', () => this.detonateAll());
+        }
+    }
 
-.logo-wrap { text-align: center; }
+    // Bouw de constructie op uit de screenshot (Balken, Glas, Beton)
+    generateStructure() {
+        this.blocks = [];
+        const startX = this.canvas.width / 2 - 120;
+        const startY = this.groundY;
 
-.logo-glitch {
-  font-family: 'Orbitron', sans-serif;
-  font-size: clamp(42px, 12vw, 80px);
-  font-weight: 900;
-  color: var(--neon-red);
-  text-shadow:
-    0 0 10px var(--neon-red),
-    0 0 30px var(--neon-red),
-    0 0 60px rgba(255,34,34,0.5),
-    2px 0 0 rgba(0,245,255,0.5),
-    -2px 0 0 rgba(255,170,0,0.5);
-  letter-spacing: 6px;
-  animation: glitch 3s infinite;
-  position: relative;
-}
+        // Basis fundering (Beton)
+        this.blocks.push(new Block(startX, startY - 15, 240, 15, 'concrete', false));
 
-.logo-glitch::before, .logo-glitch::after {
-  content: attr(data-text);
-  position: absolute; top: 0; left: 0; width: 100%;
-  font-family: inherit; font-size: inherit; font-weight: inherit;
-  letter-spacing: inherit;
-}
-.logo-glitch::before {
-  color: var(--neon-cyan);
-  animation: glitch-1 3s infinite;
-  clip-path: polygon(0 30%, 100% 30%, 100% 50%, 0 50%);
-  opacity: 0.7;
-}
-.logo-glitch::after {
-  color: var(--neon-orange);
-  animation: glitch-2 3s infinite;
-  clip-path: polygon(0 60%, 100% 60%, 100% 75%, 0 75%);
-  opacity: 0.7;
-}
+        // Verdieping 1 t/m 3 opbouwen volgens screenshot patroon
+        for (let floor = 0; floor < 3; floor++) {
+            const hY = startY - 15 - (floor * 75);
+            
+            // Verticale Dragende Muren (Rood/Geel/Hout)
+            this.blocks.push(new Block(startX + 10, hY - 60, 20, 60, 'brick')); 
+            this.blocks.push(new Block(startX + 105, hY - 60, 15, 60, 'steel')); // Liftkoker/Middenas
+            this.blocks.push(new Block(startX + 120, hY - 60, 15, 60, 'steel'));
+            this.blocks.push(new Block(startX + 210, hY - 60, 20, 60, 'brick'));
 
-@keyframes glitch {
-  0%,90%,100% { transform: none; }
-  92% { transform: skewX(2deg); }
-  94% { transform: skewX(-2deg); }
-  96% { transform: none; }
-}
-@keyframes glitch-1 {
-  0%,90%,100% { transform: none; }
-  92% { transform: translate(-3px, 0); }
-  94% { transform: translate(3px, 0); }
-}
-@keyframes glitch-2 {
-  0%,90%,100% { transform: none; }
-  93% { transform: translate(3px, 0); }
-  95% { transform: translate(-3px, 0); }
-}
+            // Glas panelen en decoratieve houten frames ertussen
+            this.blocks.push(new Block(startX + 40, hY - 50, 45, 50, 'glass'));
+            this.blocks.push(new Block(startX + 150, hY - 50, 45, 50, 'wood'));
 
-.logo-sub {
-  font-family: 'Orbitron', sans-serif;
-  font-size: clamp(14px, 4vw, 22px);
-  letter-spacing: 14px;
-  color: var(--neon-orange);
-  text-shadow: 0 0 15px var(--neon-orange);
-  margin-top: 4px;
-}
-.logo-tagline {
-  font-family: 'Rajdhani', sans-serif;
-  font-size: 11px;
-  letter-spacing: 4px;
-  color: var(--text-dim);
-  margin-top: 10px;
-}
+            // Horizontale Plafonds/Vloeren
+            this.blocks.push(new Block(startX + 5, hY - 75, 230, 15, 'concrete'));
+        }
 
-.menu-nav {
-  display: flex; flex-direction: column;
-  gap: 12px; width: 100%; max-width: 320px;
-}
+        // Top Constructie (De gele/rode stellage bovenop)
+        const topY = startY - 15 - (3 * 75);
+        this.blocks.push(new Block(startX + 60, topY - 30, 120, 30, 'wood'));
+    }
 
-.menu-btn {
-  width: 100%; padding: 16px 24px;
-  background: transparent;
-  border: 1px solid var(--neon-red);
-  color: var(--text-bright);
-  font-family: 'Orbitron', sans-serif;
-  font-size: 14px; font-weight: 700;
-  letter-spacing: 3px;
-  cursor: pointer;
-  position: relative;
-  overflow: hidden;
-  transition: all 0.2s;
-  clip-path: polygon(8px 0%, 100% 0%, calc(100% - 8px) 100%, 0% 100%);
-  display: flex; align-items: center; justify-content: center; gap: 10px;
-}
-.menu-btn::before {
-  content: '';
-  position: absolute; inset: 0;
-  background: linear-gradient(90deg, transparent, rgba(255,34,34,0.1), transparent);
-  transform: translateX(-100%);
-  transition: transform 0.3s;
-}
-.menu-btn:active::before { transform: translateX(100%); }
-.menu-btn:active {
-  background: rgba(255,34,34,0.15);
-  box-shadow: 0 0 20px rgba(255,34,34,0.4), inset 0 0 20px rgba(255,34,34,0.1);
-  transform: scale(0.98);
-}
-.menu-btn#btn-play {
-  border-color: var(--neon-red);
-  box-shadow: 0 0 15px rgba(255,34,34,0.3);
-  background: rgba(255,34,34,0.08);
-}
-.menu-btn.secondary {
-  border-color: var(--neon-cyan);
-  color: var(--neon-cyan);
-  box-shadow: 0 0 10px rgba(0,245,255,0.15);
-}
-.btn-icon { font-size: 16px; }
+    handleCanvasClick(e) {
+        if (this.isDetonated) return;
 
-.menu-footer {
-  font-size: 10px; letter-spacing: 2px;
-  color: var(--text-dim); text-align: center;
-}
+        const rect = this.canvas.getBoundingClientRect();
+        const x = e.clientX - rect.left;
+        const y = e.clientY - rect.top;
 
-/* ============ SCREEN HEADER ============ */
-.screen-header {
-  display: flex; align-items: center;
-  padding: 16px;
-  border-bottom: 1px solid var(--dark-border);
-  background: var(--dark-panel);
-  gap: 16px;
-  flex-shrink: 0;
-}
-.screen-title {
-  font-family: 'Orbitron', sans-serif;
-  font-size: 16px; font-weight: 700;
-  letter-spacing: 4px;
-  color: var(--neon-cyan);
-  text-shadow: 0 0 10px var(--neon-cyan);
-}
-.back-btn {
-  background: transparent;
-  border: 1px solid var(--dark-border);
-  color: var(--text-dim);
-  font-family: 'Rajdhani', sans-serif;
-  font-size: 13px; font-weight: 700;
-  padding: 8px 14px;
-  cursor: pointer;
-  letter-spacing: 1px;
-  transition: all 0.2s;
-}
-.back-btn:active { color: var(--neon-cyan); border-color: var(--neon-cyan); }
+        // Controleer of er nog munitie is van het geselecteerde type
+        if (this.inventory[this.selectedBombType] > 0) {
+            this.placedBombs.push({
+                x: x,
+                y: y,
+                type: this.selectedBombType,
+                radius: this.getBombRadius(this.selectedBombType)
+            });
 
-/* ============ LEVEL SELECT ============ */
-#screen-levels { overflow-y: auto; }
+            this.inventory[this.selectedBombType]--;
+            this.updateHUD();
+        }
+    }
 
-.levels-grid {
-  display: grid;
-  grid-template-columns: repeat(2, 1fr);
-  gap: 12px; padding: 16px;
-  overflow-y: auto;
-}
+    getBombRadius(type) {
+        switch(type) {
+            case 'dynamite': return 60;
+            case 'bundle': return 90;
+            case 'c4': return 130;
+            default: return 50;
+        }
+    }
 
-.level-card {
-  background: var(--dark-card);
-  border: 1px solid var(--dark-border);
-  padding: 16px 12px;
-  cursor: pointer;
-  position: relative;
-  overflow: hidden;
-  transition: all 0.2s;
-  clip-path: polygon(6px 0%, 100% 0%, calc(100% - 6px) 100%, 0% 100%);
-  display: flex; flex-direction: column; gap: 8px;
-}
-.level-card::before {
-  content: '';
-  position: absolute; top: 0; left: 0; right: 0; height: 2px;
-  background: var(--level-color, var(--neon-cyan));
-  box-shadow: 0 0 8px var(--level-color, var(--neon-cyan));
-}
-.level-card:active { transform: scale(0.96); background: rgba(255,255,255,0.04); }
-.level-card.locked { opacity: 0.4; cursor: not-allowed; }
-.level-card.completed::after {
-  content: '✓';
-  position: absolute; top: 8px; right: 10px;
-  color: #00ff88; font-size: 16px; font-weight: 900;
-  text-shadow: 0 0 8px #00ff88;
-}
+    detonateAll() {
+        if (this.placedBombs.length === 0 || this.isDetonated) return;
+        this.isDetonated = true;
 
-.level-num {
-  font-family: 'Orbitron', sans-serif;
-  font-size: 24px; font-weight: 900;
-  color: var(--level-color, var(--neon-cyan));
-  text-shadow: 0 0 10px var(--level-color, var(--neon-cyan));
-}
-.level-name {
-  font-size: 13px; font-weight: 700; letter-spacing: 1px;
-  color: var(--text-bright);
-}
-.level-desc { font-size: 11px; color: var(--text-dim); }
-.level-target {
-  font-size: 10px; font-weight: 700; letter-spacing: 2px;
-  color: var(--neon-orange);
-}
-.level-diff {
-  display: flex; gap: 3px;
-}
-.level-diff span {
-  width: 10px; height: 4px;
-  background: var(--dark-border);
-  border-radius: 2px;
-}
-.level-diff span.active {
-  background: var(--level-color, var(--neon-cyan));
-  box-shadow: 0 0 4px var(--level-color, var(--neon-cyan));
-}
+        // Activeer visuele CSS flash uit jouw stylesheet
+        const flash = document.createElement('div');
+        flash.className = 'explosion-flash';
+        document.body.appendChild(flash);
+        setTimeout(() => flash.remove(), 500);
 
-/* ============ HOW TO PLAY ============ */
-#screen-howto { overflow-y: auto; }
-.howto-content {
-  display: flex; flex-direction: column;
-  gap: 12px; padding: 16px; overflow-y: auto;
-}
-.howto-card {
-  background: var(--dark-card);
-  border: 1px solid var(--dark-border);
-  border-left: 3px solid var(--neon-orange);
-  padding: 16px;
-  display: flex; flex-direction: column; gap: 8px;
-}
-.howto-icon { font-size: 28px; }
-.howto-card h3 {
-  font-family: 'Orbitron', sans-serif;
-  font-size: 12px; font-weight: 700; letter-spacing: 2px;
-  color: var(--neon-orange);
-}
-.howto-card p { font-size: 13px; color: var(--text-bright); line-height: 1.6; }
-.howto-card p b { color: var(--neon-yellow); }
+        // Bereken impact van elke geplaatste bom op de blokken
+        this.placedBombs.forEach(bomb => {
+            // Voeg explosie deeltjes toe
+            for (let i = 0; i < 25; i++) {
+                this.particles.push(new Particle(bomb.x, bomb.y));
+            }
 
-/* ============ HIGH SCORES ============ */
-#screen-scores { overflow-y: auto; }
-.scores-list {
-  padding: 16px; display: flex; flex-direction: column; gap: 8px;
-}
-.score-row {
-  background: var(--dark-card);
-  border: 1px solid var(--dark-border);
-  padding: 14px 16px;
-  display: flex; align-items: center; gap: 12px;
-}
-.score-rank {
-  font-family: 'Orbitron', sans-serif;
-  font-size: 20px; font-weight: 900;
-  width: 32px; text-align: center;
-  color: var(--neon-yellow);
-}
-.score-rank.r1 { color: #ffd700; text-shadow: 0 0 10px #ffd700; }
-.score-rank.r2 { color: #c0c0c0; }
-.score-rank.r3 { color: #cd7f32; }
-.score-info { flex: 1; }
-.score-level { font-size: 11px; color: var(--text-dim); letter-spacing: 1px; }
-.score-pts {
-  font-family: 'Orbitron', sans-serif;
-  font-size: 16px; font-weight: 700;
-  color: var(--neon-cyan);
+            this.blocks.forEach(block => {
+                if (!block.isDestructible) return;
+
+                // Bereken afstand van explosie tot middelpunt van het blok
+                const distX = bomb.x - (block.x + block.w / 2);
+                const distY = bomb.y - (block.y + block.h / 2);
+                const distance = Math.sqrt(distX * distX + distY * distY);
+
+                if (distance < bomb.radius) {
+                    const force = (bomb.radius - distance) / bomb.radius;
+                    block.damage(force * 120);
+                    
+                    // Geef fysica snelheid mee door de drukgolf
+                    block.vx += (distX / distance) * force * 8;
+                    block.vy += (distY / distance) * force * 8 - 2;
+                }
+            });
+        });
+
+        this.placedBombs = [];
+        this.updateHUD();
+        
+        // Activeer uitslag na 3.5 seconden rust
+        setTimeout(() => this.showResults(), 3500);
+    }
+
+    updateHUD() {
+        // Update munitietellers in de HTML
+        Object.keys(this.inventory).forEach(type => {
+            const countEl = document.querySelector(`.bomb-opt[data-type="${type}"] .bomb-count`);
+            if (countEl) countEl.textContent = `x${this.inventory[type]}`;
+        });
+
+        // Update detoneerknop status
+        const detonateBtn = document.getElementById('detonate-btn');
+        if (detonateBtn) {
+            detonateBtn.disabled = this.isDetonated || this.placedBombs.length === 0;
+        }
+
+        const countPlacedEl = document.getElementById('bomb-count-placed');
+        if (countPlacedEl) {
+            countPlacedEl.textContent = `${this.placedBombs.length} PLACED`;
+        }
+    }
+
+    showResults() {
+        const resultScreen = document.getElementById('screen-result');
+        const resultTitle = document.getElementById('result-title');
+        const resultPct = document.getElementById('result-pct');
+
+        if (!resultScreen) return;
+
+        resultScreen.classList.add('active');
+        if (this.destructionPercentage >= this.targetDestruction) {
+            resultTitle.textContent = "SUCCESS!";
+            resultTitle.className = "result-title win";
+            this.score = Math.round(this.destructionPercentage * 150);
+        } else {
+            resultTitle.textContent = "FAILED";
+            resultTitle.className = "result-title lose";
+            this.score = Math.round(this.destructionPercentage * 30);
+        }
+
+        if (resultPct) resultPct.textContent = `${Math.round(this.destructionPercentage)}%`;
+        const scoreEl = document.getElementById('result-score');
+        if (scoreEl) scoreEl.textContent = this.score;
+    }
+
+    update() {
+        let destroyedCount = 0;
+        let totalDestructible = 0;
+
+        this.blocks.forEach(block => {
+            if (block.isDestructible) {
+                totalDestructible++;
+                if (block.health <= 0) destroyedCount++;
+            }
+            block.update(this.gravity, this.groundY, this.blocks);
+        });
+
+        // Bereken real-time score & vernietigingsbalk percentage
+        if (totalDestructible > 0) {
+            this.destructionPercentage = (destroyedCount / totalDestructible) * 100;
+        }
+
+        // Update de CSS progressie-balk live tijdens instorten
+        const barFill = document.querySelector('.destruction-bar-fill');
+        const pctLabel = document.querySelector('.destruction-pct');
+        if (barFill) barFill.style.width = `${this.destructionPercentage}%`;
+        if (pctLabel) pctLabel.textContent = `${Math.round(this.destructionPercentage)}%`;
+
+        // Update deeltjes (rook/vuur)
+        this.particles = this.particles.filter(p => p.alpha > 0);
+        this.particles.forEach(p => p.update());
+    }
+
+    render() {
+        this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
+
+        // Teken de achtergrond omgeving (Lucht & Bergen worden door CSS/DOM behandeld)
+        // Teken de Grondlijn
+        this.ctx.fillStyle = '#4d3319';
+        this.ctx.fillRect(0, this.groundY, this.canvas.width, 40);
+        this.ctx.fillStyle = '#59b300';
+        this.ctx.fillRect(0, this.groundY, this.canvas.width, 6);
+
+        // Teken Constructie Blokken
+        this.blocks.forEach(block => block.render(this.ctx));
+
+        // Teken Geplaatste Bommen (Vóór detonatie)
+        this.placedBombs.forEach(bomb => {
+            this.ctx.beginPath();
+            this.ctx.arc(bomb.x, bomb.y, 8, 0, Math.PI * 2);
+            this.ctx.fillStyle = '#ff2222';
+            this.ctx.fill();
+            this.ctx.strokeStyle = '#ffffff';
+            this.ctx.lineWidth = 2;
+            this.ctx.stroke();
+            
+            // Getekende actieradius indicator
+            this.ctx.beginPath();
+            this.ctx.arc(bomb.x, bomb.y, bomb.radius, 0, Math.PI * 2);
+            this.ctx.strokeStyle = 'rgba(255, 34, 34, 0.15)';
+            this.ctx.lineWidth = 1;
+            this.ctx.setLineDash([4, 4]);
+            this.ctx.stroke();
+            this.ctx.setLineDash([]);
+        });
+
+        // Teken Explosie Deeltjes
+        this.particles.forEach(p => p.render(this.ctx));
+    }
+
+    loop() {
+        this.update();
+        this.render();
+        requestAnimationFrame(() => this.loop());
+    }
 }
 
-/* ============ GAME HUD ============ */
-#game-hud {
-  display: flex; align-items: center;
-  padding: 10px 12px;
-  background: rgba(5,6,10,0.95);
-  border-bottom: 1px solid var(--dark-border);
-  flex-shrink: 0; gap: 8px;
-  z-index: 100;
-}
-.hud-left { flex: 1; }
-.hud-level {
-  font-family: 'Orbitron', sans-serif;
-  font-size: 10px; font-weight: 700; letter-spacing: 3px;
-  color: var(--neon-cyan);
-}
-.hud-score {
-  font-family: 'Orbitron', sans-serif;
-  font-size: 13px; font-weight: 900;
-  color: var(--neon-yellow);
-  text-shadow: 0 0 8px var(--neon-yellow);
-}
-.hud-center { flex: 2; display: flex; flex-direction: column; align-items: center; gap: 3px; }
-.destruction-label { font-size: 9px; letter-spacing: 3px; color: var(--text-dim); }
-.destruction-bar-bg {
-  width: 100%; height: 8px;
-  background: rgba(255,255,255,0.05);
-  border: 1px solid var(--dark-border);
-  position: relative; overflow: visible;
-}
-.destruction-bar-fill {
-  height: 100%; width: 0%;
-  background: linear-gradient(90deg, var(--neon-red), var(--neon-orange));
-  box-shadow: 0 0 8px var(--neon-red);
-  transition: width 0.4s ease;
-  position: relative;
-}
-.destruction-bar-target {
-  position: absolute; top: -3px; bottom: -3px; width: 2px;
-  background: var(--neon-yellow);
-  box-shadow: 0 0 6px var(--neon-yellow);
-}
-.destruction-pct {
-  font-family: 'Orbitron', sans-serif;
-  font-size: 11px; font-weight: 700;
-  color: var(--neon-orange);
-}
-.hud-right { flex: 1; display: flex; align-items: center; justify-content: flex-end; gap: 10px; }
-.bombs-left { font-size: 12px; color: var(--neon-yellow); font-weight: 700; }
-.back-btn-sm {
-  background: transparent; border: 1px solid #333;
-  color: #666; font-size: 14px; width: 30px; height: 30px;
-  cursor: pointer; display: flex; align-items: center; justify-content: center;
+/* ========================================================
+   CONSTRUCTIE ELEMENTEN & BLOK MECHANICA
+   ======================================================== */
+
+class Block {
+    constructor(x, y, w, h, type, isDestructible = true) {
+        this.x = x;
+        this.y = y;
+        this.w = w;
+        this.h = h;
+        this.type = type;
+        this.isDestructible = isDestructible;
+        
+        this.vx = 0;
+        this.vy = 0;
+        this.angle = 0;
+        this.health = this.getMaxHealth(type);
+    }
+
+    getMaxHealth(type) {
+        switch(type) {
+            case 'concrete': return 300;
+            case 'steel': return 200;
+            case 'brick': return 100;
+            case 'wood': return 60;
+            case 'glass': return 1;
+            default: return 100;
+        }
+    }
+
+    damage(amount) {
+        this.health -= amount;
+        if (this.health < 0) this.health = 0;
+    }
+
+    update(gravity, groundY, allBlocks) {
+        if (this.health <= 0 && this.isDestructible) {
+            // Doof uit naar de grond bij vernietiging
+            this.vy += gravity;
+            this.y += this.vy;
+            if (this.y > groundY) this.y = groundY;
+            return;
+        }
+
+        // Simpele valversnelling fysica voor losse elementen
+        if (this.y + this.h < groundY) {
+            this.vy += gravity;
+        } else {
+            this.vy = 0;
+            this.y = groundY - this.h;
+            this.vx *= 0.8; // Wrijving met de grond
+        }
+
+        this.x += this.vx;
+        this.y += this.vy;
+    }
+
+    render(ctx) {
+        if (this.health <= 0 && this.isDestructible) return; // Niet tekenen als het puin is verdwenen
+
+        ctx.save();
+        ctx.translate(this.x + this.w / 2, this.y + this.h / 2);
+        ctx.rotate(this.angle);
+
+        // Styling op basis van element types uit het spel
+        switch(this.type) {
+            case 'concrete':
+                ctx.fillStyle = '#a6a6a6';
+                ctx.strokeStyle = '#737373';
+                break;
+            case 'steel':
+                ctx.fillStyle = '#404040';
+                ctx.strokeStyle = '#00f5ff'; // Futuristische neon rand
+                break;
+            case 'brick':
+                ctx.fillStyle = '#cc3333';
+                ctx.strokeStyle = '#802020';
+                break;
+            case 'wood':
+                ctx.fillStyle = '#cca373';
+                ctx.strokeStyle = '#996633';
+                break;
+            case 'glass':
+                ctx.fillStyle = 'rgba(179, 236, 255, 0.4)';
+                ctx.strokeStyle = '#b3ecff';
+                break;
+        }
+
+        ctx.fillRect(-this.w / 2, -this.h / 2, this.w, this.h);
+        ctx.lineWidth = 1.5;
+        ctx.strokeRect(-this.w / 2, -this.h / 2, this.w, this.h);
+        ctx.restore();
+    }
 }
 
-/* ============ GAME CANVAS ============ */
-#game-canvas {
-  flex: 1; display: block; width: 100%;
-  touch-action: none;
-  cursor: crosshair;
+/* ========================================================
+   VISUELE EXPLOSIE PARTICLES
+   ======================================================== */
+
+class Particle {
+    constructor(x, y) {
+        this.x = x;
+        this.y = y;
+        this.radius = Math.random() * 20 + 10;
+        this.vx = (Math.random() - 0.5) * 12;
+        this.vy = (Math.random() - 0.5) * 12;
+        this.alpha = 1;
+        this.color = Math.random() > 0.4 ? '#ff6a00' : '#ffe600'; // Oranje en geel vuur
+    }
+
+    update() {
+        this.x += this.vx;
+        this.y += this.vy;
+        this.alpha -= 0.025;
+        if (this.radius > 0.5) this.radius -= 0.4;
+    }
+
+    render(ctx) {
+        ctx.save();
+        ctx.globalAlpha = this.alpha;
+        ctx.beginPath();
+        ctx.arc(this.x, this.y, this.radius, 0, Math.PI * 2);
+        ctx.fillStyle = this.color;
+        ctx.fill();
+        ctx.restore();
+    }
 }
 
-/* ============ BOMB TOOLBAR ============ */
-#bomb-toolbar {
-  background: rgba(5,6,10,0.98);
-  border-top: 1px solid var(--dark-border);
-  padding: 8px 10px;
-  flex-shrink: 0;
-}
-.toolbar-label {
-  font-size: 9px; letter-spacing: 3px; color: var(--text-dim);
-  margin-bottom: 6px;
-}
-.bomb-options {
-  display: flex; gap: 8px; overflow-x: auto;
-  padding-bottom: 2px;
-  scrollbar-width: none;
-}
-.bomb-options::-webkit-scrollbar { display: none; }
-
-.bomb-opt {
-  flex-shrink: 0;
-  background: var(--dark-card);
-  border: 1px solid var(--dark-border);
-  color: var(--text-bright);
-  font-family: 'Orbitron', sans-serif;
-  font-size: 9px; font-weight: 700;
-  letter-spacing: 1px;
-  padding: 8px 10px;
-  cursor: pointer;
-  display: flex; flex-direction: column;
-  align-items: center; gap: 4px;
-  transition: all 0.2s;
-  min-width: 58px;
-  clip-path: polygon(4px 0%, 100% 0%, calc(100% - 4px) 100%, 0% 100%);
-}
-.bomb-opt.active {
-  border-color: var(--neon-red);
-  background: rgba(255,34,34,0.12);
-  box-shadow: 0 0 12px rgba(255,34,34,0.3);
-}
-.bomb-opt:active { transform: scale(0.93); }
-
-.bomb-sprite {
-  width: 28px; height: 28px;
-  border-radius: 50%;
-  position: relative;
-}
-.c4-sprite { background: radial-gradient(circle at 40% 35%, #ff6060, #cc0000, #700); box-shadow: 0 0 8px rgba(255,50,50,0.6); }
-.tnt-sprite { background: radial-gradient(circle at 40% 35%, #ffcc44, #ff8800, #a04000); box-shadow: 0 0 8px rgba(255,140,0,0.6); }
-.thermo-sprite { background: radial-gradient(circle at 40% 35%, #88ffee, #00ccff, #0044aa); box-shadow: 0 0 8px rgba(0,200,255,0.6); }
-.emp-sprite { background: radial-gradient(circle at 40% 35%, #dd88ff, #aa00ff, #440088); box-shadow: 0 0 8px rgba(170,0,255,0.6); }
-.mega-sprite { background: radial-gradient(circle at 40% 35%, #ffffff, #ffee00, #ff6600, #aa0000); box-shadow: 0 0 12px rgba(255,200,0,0.8); }
-
-.bomb-power { font-size: 8px; color: var(--neon-yellow); letter-spacing: 1px; }
-
-/* ============ DETONATE BUTTON ============ */
-#detonate-wrap {
-  padding: 10px 16px 12px;
-  background: rgba(5,6,10,0.98);
-  border-top: 1px solid var(--dark-border);
-  display: flex; align-items: center; gap: 12px;
-  flex-shrink: 0;
-}
-
-#detonate-btn {
-  flex: 1;
-  background: linear-gradient(135deg, #1a0000, #330000);
-  border: 2px solid var(--neon-red);
-  color: var(--neon-red);
-  font-family: 'Orbitron', sans-serif;
-  font-size: 16px; font-weight: 900;
-  letter-spacing: 4px;
-  padding: 14px;
-  cursor: pointer;
-  position: relative;
-  overflow: hidden;
-  clip-path: polygon(10px 0%, 100% 0%, calc(100% - 10px) 100%, 0% 100%);
-  box-shadow: 0 0 20px rgba(255,34,34,0.3), inset 0 0 20px rgba(255,34,34,0.05);
-  transition: all 0.2s;
-  display: flex; align-items: center; justify-content: center;
-}
-#detonate-btn:disabled {
-  opacity: 0.3; cursor: not-allowed;
-  filter: grayscale(1);
-}
-#detonate-btn:not(:disabled) {
-  animation: pulse-btn 1.5s infinite;
-}
-#detonate-btn:not(:disabled):active {
-  transform: scale(0.96);
-  box-shadow: 0 0 40px rgba(255,34,34,0.8);
-  background: rgba(255,34,34,0.2);
-}
-@keyframes pulse-btn {
-  0%,100% { box-shadow: 0 0 20px rgba(255,34,34,0.3), inset 0 0 20px rgba(255,34,34,0.05); }
-  50% { box-shadow: 0 0 35px rgba(255,34,34,0.6), inset 0 0 20px rgba(255,34,34,0.1); }
-}
-.det-inner { display: flex; align-items: center; gap: 10px; }
-.det-icon { font-size: 20px; }
-
-#bomb-count-placed {
-  font-family: 'Orbitron', sans-serif;
-  font-size: 10px; color: var(--text-dim);
-  letter-spacing: 1px; text-align: center;
-  min-width: 80px;
-}
-
-/* ============ RESULT SCREEN ============ */
-#screen-result {
-  background: rgba(0,0,0,0.92);
-  align-items: center; justify-content: center;
-  z-index: 200;
-}
-.result-content {
-  background: var(--dark-panel);
-  border: 1px solid var(--dark-border);
-  padding: 32px 24px;
-  width: calc(100% - 40px);
-  max-width: 360px;
-  display: flex; flex-direction: column;
-  align-items: center; gap: 20px;
-  position: relative;
-  clip-path: polygon(12px 0%, 100% 0%, calc(100% - 12px) 100%, 0% 100%);
-}
-.result-title {
-  font-family: 'Orbitron', sans-serif;
-  font-size: 28px; font-weight: 900;
-  letter-spacing: 4px;
-  text-align: center;
-}
-.result-title.win {
-  color: #00ff88;
-  text-shadow: 0 0 20px #00ff88, 0 0 40px rgba(0,255,136,0.5);
-  animation: win-pulse 1s infinite;
-}
-.result-title.lose {
-  color: var(--neon-red);
-  text-shadow: 0 0 20px var(--neon-red);
-}
-@keyframes win-pulse {
-  0%,100% { text-shadow: 0 0 20px #00ff88, 0 0 40px rgba(0,255,136,0.5); }
-  50% { text-shadow: 0 0 40px #00ff88, 0 0 80px rgba(0,255,136,0.8); }
-}
-.result-stats {
-  width: 100%; display: flex; flex-direction: column; gap: 10px;
-}
-.result-stat {
-  display: flex; justify-content: space-between; align-items: center;
-  padding: 10px 14px;
-  background: var(--dark-card);
-  border-left: 3px solid var(--neon-orange);
-}
-.result-stat-label {
-  font-size: 11px; letter-spacing: 2px; color: var(--text-dim);
-  font-family: 'Orbitron', sans-serif;
-}
-.result-stat-value {
-  font-family: 'Orbitron', sans-serif;
-  font-size: 18px; font-weight: 900;
-  color: var(--neon-yellow);
-}
-.result-stars {
-  font-size: 32px; letter-spacing: 8px;
-  filter: drop-shadow(0 0 8px gold);
-}
-.result-btns {
-  display: flex; flex-direction: column; gap: 10px; width: 100%;
-}
-.result-btn {
-  width: 100%; padding: 14px;
-  background: transparent;
-  font-family: 'Orbitron', sans-serif;
-  font-size: 13px; font-weight: 700; letter-spacing: 3px;
-  cursor: pointer;
-  transition: all 0.2s;
-  clip-path: polygon(8px 0%, 100% 0%, calc(100% - 8px) 100%, 0% 100%);
-}
-.result-btn.primary {
-  border: 2px solid var(--neon-cyan);
-  color: var(--neon-cyan);
-  background: rgba(0,245,255,0.08);
-}
-.result-btn.secondary {
-  border: 1px solid var(--dark-border);
-  color: var(--text-dim);
-}
-.result-btn:active { transform: scale(0.96); opacity: 0.8; }
-
-/* ============ EXPLOSION FLASH ============ */
-@keyframes flash {
-  0% { opacity: 0; }
-  10% { opacity: 1; }
-  100% { opacity: 0; }
-}
-.explosion-flash {
-  position: fixed; inset: 0;
-  background: rgba(255,200,100,0.4);
-  pointer-events: none; z-index: 500;
-  animation: flash 0.5s ease-out forwards;
-}
-
-/* ============ SCROLLBAR ============ */
-::-webkit-scrollbar { width: 4px; }
-::-webkit-scrollbar-track { background: var(--dark-bg); }
-::-webkit-scrollbar-thumb { background: var(--dark-border); border-radius: 2px; }
+// Initialiseer de game zodra het DOM-model geladen is
+document.addEventListener('DOMContentLoaded', () => {
+    window.gameEngine = new DemolitionGame();
+});
