@@ -1,0 +1,182 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no"/>
+  <title>Demolition Master</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com"/>
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
+  <link href="https://fonts.googleapis.com/css2?family=Fredoka+One&family=Nunito:wght@700;900&display=swap" rel="stylesheet"/>
+  <link rel="stylesheet" href="style.css"/>
+</head>
+<body>
+
+<!-- ==============================
+     MENU SCREEN
+     ============================== -->
+<div id="screen-menu" class="screen active">
+  <div class="menu-sky">
+    <canvas id="bg-canvas"></canvas>
+  </div>
+  <div class="menu-content">
+    <div class="menu-logo-wrap">
+      <div class="menu-logo">DEMOLITION</div>
+      <div class="menu-sub">MASTER</div>
+    </div>
+    <nav class="menu-nav">
+      <button class="mbtn mbtn-play"   onclick="showLevelSelect()">&#9654; SPELEN</button>
+      <button class="mbtn mbtn-howto"  onclick="showHowTo()">&#10067; HOE TE SPELEN</button>
+      <button class="mbtn mbtn-scores" onclick="showHighScores()">&#9733; HIGH SCORES</button>
+    </nav>
+    <div class="menu-footer">v3.0 &middot; Demolition Master</div>
+  </div>
+</div>
+
+<!-- ==============================
+     LEVEL SELECT SCREEN
+     ============================== -->
+<div id="screen-levels" class="screen">
+  <div class="page-header">
+    <button class="hdr-back" onclick="showMenu()">&larr; TERUG</button>
+    <div class="hdr-title">KIES EEN LEVEL</div>
+  </div>
+  <div class="levels-scroll">
+    <div class="levels-grid" id="levels-grid"></div>
+  </div>
+</div>
+
+<!-- ==============================
+     HOW TO PLAY SCREEN
+     ============================== -->
+<div id="screen-howto" class="screen">
+  <div class="page-header">
+    <button class="hdr-back" onclick="showMenu()">&larr; TERUG</button>
+    <div class="hdr-title">HOE TE SPELEN</div>
+  </div>
+  <div class="howto-grid">
+    <div class="howto-card">
+      <div class="howto-icon">&#128163;</div>
+      <h3>EXPLOSIEVEN PLAATSEN</h3>
+      <p>Tik op een blok van het gebouw om een explosief te plaatsen. Tik opnieuw om het te verwijderen.</p>
+    </div>
+    <div class="howto-card">
+      <div class="howto-icon">&#128308;</div>
+      <h3>DETONEER!</h3>
+      <p>Druk de grote rode knop in om alle geplaatste explosieven tegelijk tot ontploffing te brengen.</p>
+    </div>
+    <div class="howto-card">
+      <div class="howto-icon">&#127942;</div>
+      <h3>SLOOP DOEL</h3>
+      <p>Bereik de gele streep op de balk boven. Hoe meer je sloopt, hoe meer sterren je verdient!</p>
+    </div>
+    <div class="howto-card">
+      <div class="howto-icon">&#9889;</div>
+      <h3>BOM TYPES</h3>
+      <p>
+        <b>C4</b> &ndash; krachtig, klein bereik<br/>
+        <b>TNT</b> &ndash; breed explosiegebied<br/>
+        <b>THERMO</b> &ndash; doordringende hitte<br/>
+        <b>EMP</b> &ndash; kettingreactie<br/>
+        <b>MEGA</b> &ndash; massavernietiging
+      </p>
+    </div>
+    <div class="howto-card">
+      <div class="howto-icon">&#127873;</div>
+      <h3>COMBO BONUS</h3>
+      <p>Meerdere bommen tegelijk laten ontploffen geeft een combo-bonus op je score!</p>
+    </div>
+    <div class="howto-card">
+      <div class="howto-icon">&#11088;</div>
+      <h3>STERREN</h3>
+      <p>
+        &#11088; &ndash; Doel gehaald<br/>
+        &#11088;&#11088; &ndash; +10% extra<br/>
+        &#11088;&#11088;&#11088; &ndash; +20% extra
+      </p>
+    </div>
+  </div>
+</div>
+
+<!-- ==============================
+     HIGH SCORES SCREEN
+     ============================== -->
+<div id="screen-scores" class="screen">
+  <div class="page-header">
+    <button class="hdr-back" onclick="showMenu()">&larr; TERUG</button>
+    <div class="hdr-title">HIGH SCORES</div>
+  </div>
+  <div id="scores-list" class="scores-list"></div>
+</div>
+
+<!-- ==============================
+     GAME SCREEN
+     ============================== -->
+<div id="screen-game" class="screen">
+
+  <!-- HUD top bar -->
+  <div id="game-hud">
+    <button class="hud-pause" onclick="togglePause()">&#9646;&#9646;</button>
+    <div class="hud-level-badge">
+      <div class="hud-level-num"  id="hud-lvl-num">LEVEL 1</div>
+      <div class="hud-level-name" id="hud-lvl-name">&mdash;</div>
+    </div>
+    <div class="hud-center">
+      <div class="hud-bar-bg">
+        <div class="hud-bar-fill"   id="dest-fill"   style="width:0%"></div>
+        <div class="hud-bar-target" id="dest-target"></div>
+      </div>
+      <div class="hud-bar-pct" id="dest-pct">0%</div>
+    </div>
+    <div class="hud-score-wrap">
+      <div class="hud-score-label">SCORE</div>
+      <div class="hud-score-val" id="hud-score">0</div>
+    </div>
+  </div>
+
+  <!-- Game canvas -->
+  <canvas id="game-canvas"></canvas>
+
+  <!-- Bottom toolbar: crate-style bomb selector + detonate button -->
+  <div id="bottom-ui">
+    <div class="toolbar-top-edge"></div>
+    <div class="toolbar-inner">
+      <div class="bomb-slots" id="bomb-slots"></div>
+      <div id="det-area">
+        <button id="detonate-btn" onclick="detonate()" disabled>
+          <span class="det-icon-img">&#128165;</span>
+        </button>
+        <div id="det-label">
+          DETONEER<br/>
+          <span id="det-count">0 bommen</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+</div><!-- /screen-game -->
+
+<!-- ==============================
+     RESULT OVERLAY
+     ============================== -->
+<div id="screen-result" class="screen">
+  <div class="result-box" id="result-box"></div>
+</div>
+
+<!-- ==============================
+     PAUSE OVERLAY
+     ============================== -->
+<div id="pause-modal">
+  <div class="pause-box">
+    <div class="pause-title">&#9646;&#9646; PAUZE</div>
+    <button class="rbtn rbtn-primary"   onclick="togglePause()">&#9654; DOORGAAN</button>
+    <button class="rbtn rbtn-secondary" onclick="showLevelSelect(); closePause()">&#128203; LEVELS</button>
+    <button class="rbtn rbtn-secondary" onclick="showMenu(); closePause()">&#127968; MENU</button>
+  </div>
+</div>
+
+<!-- Toast notification -->
+<div id="toast"></div>
+
+<script src="script.js"></script>
+</body>
+</html>
