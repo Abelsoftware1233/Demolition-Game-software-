@@ -408,7 +408,7 @@ html, body {
 <div id="screen-howto" class="screen">
   <div class="page-header"><button class="hdr-back" id="howBackBtn">← TERUG</button><div class="hdr-title">HOE TE SPELEN</div></div>
   <div class="howto-grid" style="display:grid; grid-template-columns:1fr 1fr; gap:14px; padding:20px; max-width:500px; margin:0 auto">
-    <div class="hcard" style="background:#fff9e8; border-radius:24px; padding:16px; text-align:center"><div class="hcard-icon" style="font-size:42px">💣</div><h3 style="color:#e64200">PLAATSEN</h3><p>Tik op blok → bom plaatsen, nogmaals tikken verwijdert.</p></div>
+    <div class="hcard" style="background:#fff9e8; border-radius:24px; padding:16px; text-align:center"><div class="hcard-icon" style="font-size:42px">💣</div><h3 style="color:#e64200">PLACE</h3><p>Tik op blok → bom plaatsen, nogmaals tikken verwijdert.</p></div>
     <div class="hcard" style="background:#fff9e8; border-radius:24px; padding:16px; text-align:center"><div class="hcard-icon" style="font-size:42px">🔥</div><h3 style="color:#e64200">DETONEREN</h3><p>Rode knop laat alle bommen tegelijk knallen!</p></div>
     <div class="hcard" style="background:#fff9e8; border-radius:24px; padding:16px; text-align:center"><div class="hcard-icon" style="font-size:42px">🎯</div><h3 style="color:#e64200">DOELSTREEP</h3><p>Gele lijn op balk: behaal % vernieling voor sterren.</p></div>
     <div class="hcard" style="background:#fff9e8; border-radius:24px; padding:16px; text-align:center"><div class="hcard-icon" style="font-size:42px">⚡</div><h3 style="color:#e64200">BOMTYPES</h3><p>C4 • TNT • THERM • EMP (ketting) • MEGA</p></div>
@@ -416,7 +416,7 @@ html, body {
 </div>
 
 <div id="screen-scores" class="screen">
-  <div class="page-header"><button class="hdr-back" id="scoresBackBtn">← TERUG</button><div class="hdr-title">HIGHSCORES</div></div>
+  <div class="page-header"><button class="hdr-back" id="scoresBackBtn">← BACK</button><div class="hdr-title">HIGHSCORES</div></div>
   <div id="scores-list" class="scores-list" style="padding:20px; max-width:450px; margin:0 auto"></div>
 </div>
 
@@ -428,11 +428,11 @@ html, body {
     <div class="hud-score"><div class="hud-score-val" id="hud-score">0</div></div>
   </div>
   <canvas id="game-canvas"></canvas>
-  <div id="toolbar"><div class="tb-inner"><div class="bomb-slots" id="bomb-slots"></div><div id="det-wrap"><button id="det-btn" disabled><span class="det-icon">💥</span></button><div id="det-lbl"><span id="det-count">0 bommen</span></div></div></div></div>
+  <div id="toolbar"><div class="tb-inner"><div class="bomb-slots" id="bomb-slots"></div><div id="det-wrap"><button id="det-btn" disabled><span class="det-icon">💥</span></button><div id="det-lbl"><span id="det-count">0 bombes</span></div></div></div></div>
 </div>
 
 <div id="screen-result" class="screen"><div class="res-box" id="res-box"></div></div>
-<div id="pause-modal"><div class="pause-box"><div style="font-size:28px">⏸ PAUZE</div><button class="rbtn rbtn-p" id="pauseResumeBtn">▶ DOORGAAN</button><button class="rbtn rbtn-s" id="pauseLevelsBtn">📋 LEVELS</button><button class="rbtn rbtn-s" id="pauseMenuBtn">🏠 MENU</button></div></div>
+<div id="pause-modal"><div class="pause-box"><div style="font-size:28px">⏸ PAUZE</div><button class="rbtn rbtn-p" id="pauseResumeBtn">▶ RESUME</button><button class="rbtn rbtn-s" id="pauseLevelsBtn">📋 LEVELS</button><button class="rbtn rbtn-s" id="pauseMenuBtn">🏠 MENU</button></div></div>
 <div id="toast"></div>
 
 <script>
